@@ -1,4 +1,5 @@
 import random
+import copy
 
 
 def selectAnchorLink(percent, S, T):
@@ -18,9 +19,10 @@ def selectAnchorLink(percent, S, T):
         for eachline in fin:
             usr_list_t.add(eachline.split('\t')[0])
             usr_list_t.add(eachline.split('\t')[1])
-    
+
     usr_common = usr_list_s.intersection(usr_list_t)
     return random.sample(usr_common, int(percent * len(usr_common)) // 100)
+
 
 def sampleNetwork(sp, ov, per, G):
     '''
@@ -50,7 +52,7 @@ def sampleNetwork(sp, ov, per, G):
                     if vertex1 in degree_counter[vertex2][0]:
                         degree_counter[vertex2][0].remove(vertex1)
                         sample.add((vertex1, vertex2))
-    
+
     # 按照概率采样
     graph_s = []
     graph_t = []
@@ -64,7 +66,7 @@ def sampleNetwork(sp, ov, per, G):
             graph_s.append(edge)
             anchor_s.add(edge[0])
             anchor_s.add(edge[1])
-        elif 1 - sp < p and p <= 1- sp * ov:
+        elif 1 - sp < p and p <= 1 - sp * ov:
             graph_t.append(edge)
             anchor_t.add(edge[0])
             anchor_t.add(edge[1])
@@ -80,6 +82,7 @@ def sampleNetwork(sp, ov, per, G):
 
     return graph_s, graph_t, rest_links
 
+
 def crossNetworkExtension(S, T, A):
     '''
     :S: 源网络
@@ -87,9 +90,10 @@ def crossNetworkExtension(S, T, A):
     :A: anchor link集合,list
     :return: 扩展后的网络
     '''
-    print(A)
     friend_list_s = {}
     friend_list_t = {}
+    usr_set_s = set()
+    usr_set_t = set()
     for edge in S:
         (u1, u2) = edge
         if u1 not in friend_list_s:
@@ -98,7 +102,10 @@ def crossNetworkExtension(S, T, A):
             friend_list_s[u2] = set()
         friend_list_s[u1].add(u2)
         friend_list_s[u2].add(u1)
-    
+
+        usr_set_s.add(u1)
+        usr_set_s.add(u2)
+
     for edge in T:
         [u1, u2] = edge
         if u1 not in friend_list_t:
@@ -108,20 +115,22 @@ def crossNetworkExtension(S, T, A):
         friend_list_t[u1].add(u2)
         friend_list_t[u2].add(u1)
 
+        usr_set_t.add(u1)
+        usr_set_t.add(u2)
+
     for usr in A:
         for friend in friend_list_s[usr]:
             if friend in A and friend not in friend_list_t[usr]:
-                # s网络里两个anchor是朋友，在t里不是朋友
-                # 进行更改，添加t里的朋友关系
                 friend_list_t[friend].add(usr)
                 friend_list_t[usr].add(friend)
 
         for friend in friend_list_t[usr]:
             if friend in A and friend not in friend_list_s[usr]:
-                # t网络里两个anchor是朋友，在s里不是朋友
-                # 进行更改，添加s里的朋友关系
                 friend_list_s[friend].add(usr)
                 friend_list_s[usr].add(friend)
+
+    neighbor_list_s = copy.deepcopy(friend_list_s)
+    neighbor_list_t = copy.deepcopy(friend_list_t)
 
     adjacency_list_s = set()
     adjacency_list_t = set()
@@ -133,7 +142,8 @@ def crossNetworkExtension(S, T, A):
         for friend in friends:
             adjacency_list_t.add((usr, friend))
             friend_list_t[friend].remove(usr)
-    return list(adjacency_list_s), list(adjacency_list_t)
+    return list(adjacency_list_s), list(adjacency_list_t), \
+        (usr_set_s, neighbor_list_s), (usr_set_t, neighbor_list_t)
 
 
 def loadGraph(address):
@@ -147,6 +157,3 @@ def loadGraph(address):
             [ui, uj] = eachline.split('\t')[:2]
             graph.add((int(ui), int(uj)))
     return list(graph)
-
-if __name__ == '__main__':
-    main()
